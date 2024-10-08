@@ -18,7 +18,7 @@ O desafio se divide nas seguintes etapas:
 1. Desenvolvimento do desafio (analisar, explorar e modelar o problema)
 1. Criar uma apresentação em **formato PowerPoint**
 1. **Submeter** o(s) código(s) e o arquivo da apresentação ao mesmo repositório*(maiores detalhes vide seção 1.6)
-1. Informar pelo email eduardo@aignosi.com que você concluiu o desafio
+1. Informar pelo email eduardo@aignosi.com.br que você concluiu o desafio
 1. Iremos combinar uma data da sua apresentação (a ser realizada remotamente via Microsoft Teams)
 1. Realizar a apresentação final para os stackholders da aignosi
  
@@ -64,7 +64,7 @@ Para realizar o desafio, você precisa **cumprir os seguintes requisitos**:
 ## 1.7 FAQ
 
 1. Pode usar Google, Kaggle, Stackoverflow à vontade, pois é assim que funciona na vida real!
-2. Será permitido tirar dúvidas com as pessoas da aignosi, apenas no que concerne ao entendimento da dinâmica do desafio. Não é permitido tirar dúvidas técnicas. O contato será via email eduardo@aignosi.com
+2. Será permitido tirar dúvidas com as pessoas da aignosi, apenas no que concerne ao entendimento da dinâmica do desafio. Não é permitido tirar dúvidas técnicas. O contato será via email eduardo@aignosi.com.br
 3. Não é permitido entregar os códigos em formato *.ipynb, pois queremos ver a sua desenvoltura codificando apenas em formato *.py.
 
 ##--------------------------------------------------------------------------------------------------------------
@@ -105,4 +105,4 @@ Busque trazer **diferenciais** para o seu desafio:
 
 ## 2.4 Agradecimentos e dúvidas
 
-Agradecemos o seu interesse de participar no desafio e qualquer dúvida, entre em contato pelo email com eduardo@aignosi.com
+Agradecemos o seu interesse de participar no desafio e qualquer dúvida, entre em contato pelo email com eduardo@aignosi.com.br
