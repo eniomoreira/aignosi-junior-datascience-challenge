@@ -11,6 +11,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from scipy import stats
 
+
+
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
@@ -19,7 +21,6 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 #################### Pré processamento de dados #######################################################
-#Necessario mudar o caminho do arquivo de acordo com a localizacao
 df = pd.read_csv("MiningProcess_Flotation_Plant_Database.csv")
 df['date'] = pd.to_datetime(df['date'])
 # Mudar a marcação de casas decimais para .
@@ -270,24 +271,29 @@ pca_feed = pca_feed.reset_index(drop=True)
 imp_scaled = imp_scaled.reset_index(drop=True)
 iron_conce_scaled = iron_conce_scaled.reset_index(drop=True)
 
-pca_combined = pd.DataFrame()
-pca_combined = pd.concat([imp_scaled,pca_air_flow, pca_level, pca_feed,iron_conce_scaled], axis=1)
+pca_combined1 = pd.DataFrame()
+pca_combined2 = pd.DataFrame()
+pca_combined1 = pd.concat([imp_scaled,pca_air_flow, pca_level, pca_feed,iron_conce_scaled], axis=1)
+pca_combined2 = pd.concat([imp_scaled,pca_air_flow, pca_level, pca_feed], axis=1) # Sem % Iron Concentrate
 
 
 ######################### Construção dos Modelos (Validação Cruzada, Treino e Teste) ########################################
-X_pca = pca_combined
+X1_pca = pca_combined1
+X2_pca = pca_combined2
 y = df['% Silica Concentrate']
 # Dividir dados em treino e teste
-X_train, X_test, y_train, y_test = train_test_split(X_pca, y, test_size=0.2, random_state=42)
+X1_train, X1_test, y1_train, y1_test = train_test_split(X1_pca, y, test_size=0.2, random_state=42)
+X2_train, X2_test, y2_train, y2_test = train_test_split(X2_pca, y, test_size=0.2, random_state=42)
 
 
-def model_trainval(model,x,y):
+
+def model_trainval(model,x,y,iron_conce):
     
     scoring = ['neg_root_mean_squared_error', 'r2']
     scores = cross_validate(model, x, y, scoring=scoring)
     RMSE = scores['test_neg_root_mean_squared_error'].mean()
     R2 = scores['test_r2'].mean()
-    print("Result of Model Validation")
+    print("Result of model validation" + ' ' + iron_conce + ' ' + "as a feature")
     print(f"RMSE : {RMSE}")
     print(f"R2 :{R2}")
     
@@ -296,31 +302,30 @@ def model_trainval(model,x,y):
 ######### Lasso #######################################
 reg1=Lasso(alpha=0.001)
 
-print("Métricas do treinamento Lasso\n")
-[RMSE, R2]=model_trainval(reg1,X_train,y_train)
+print("Métricas do treinamento Lasso")
+[RMSE, R2]=model_trainval(reg1,X1_train,y1_train,"with % Iron Concentrate")
+[RMSE, R2]=model_trainval(reg1,X2_train,y2_train,"whitout % Iron Concentrate")
+print("\n")
 
-RMSE_Col=[]
-R2_Col=[]
-
-RMSE_Col.append(RMSE)
-R2_Col.append(R2)
 ###########################################################
 
 ################# Ridge ###################################
 reg2=Ridge(alpha=0.001)
 
-print("Métricas do treinamento Ridge\n")
-[RMSE,R2]=model_trainval(reg2,X_train,y_train)
+print("Métricas do treinamento Ridge")
+[RMSE, R2]=model_trainval(reg2,X1_train,y1_train,"with % Iron Concentrate")
+[RMSE, R2]=model_trainval(reg2,X2_train,y2_train,"whitout % Iron Concentrate")
+print("\n")
 
-RMSE_Col.append(RMSE)
-R2_Col.append(R2)
 ###########################################################
 
 #################### Random Forest Tree Model ############
 reg3=RandomForestRegressor(max_depth=10,n_estimators=10)
 
-print("Métricas do treinamento Random Forest\n")
-[RMSE,R2]=model_trainval(reg3,X_train,y_train)
+print("Métricas do treinamento Random Forest")
+[RMSE, R2]=model_trainval(reg3,X1_train,y1_train,"with % Iron Concentrate")
+[RMSE, R2]=model_trainval(reg3,X2_train,y2_train,"whitout % Iron Concentrate")
+print("\n")
 
 ###########################################################
 
@@ -367,56 +372,67 @@ print(best_params)
 print(f"\nMédia do RMSE dos melhores hiperparâmetros: {mean_rmse:.4f}")
 print(f"Média do R² nos melhores hiperparâmetros: {mean_r2:.4f}")'''
 
-# Treinamento com o melhor modelo
 
+# Definição do modelo-
 best_params = {
-    'solver': 'sgd',
+    'solver': 'adam',
     'learning_rate': 'adaptive',
     'hidden_layer_sizes': (200, 100),
     'alpha': 0.001,
     'activation': 'relu'
 }
 
-mlp_best = MLPRegressor(
-    max_iter=500,
-    random_state=42,
-    verbose=True,  
-    **best_params
-)
+# Treinamento com %Iron Concentrate
+mlp1 = MLPRegressor(max_iter=500, random_state=42, verbose=True, **best_params)
+mlp1.fit(X1_train, y1_train)
+loss1 = mlp1.loss_curve_
 
-mlp_best.fit(X_train, y_train)
+y1_train_pred = mlp1.predict(X1_train)
+y1_test_pred = mlp1.predict(X1_test)
 
-train_losses = mlp_best.loss_curve_
+train_rmse1 = root_mean_squared_error(y1_train, y1_train_pred)
+test_rmse1 = root_mean_squared_error(y1_test, y1_test_pred)
+train_r21 = r2_score(y1_train, y1_train_pred)
+test_r21 = r2_score(y1_test, y1_test_pred)
 
-y_train_pred = mlp_best.predict(X_train)
-y_test_pred = mlp_best.predict(X_test)
 
-train_rmse = root_mean_squared_error(y_train, y_train_pred)
-test_rmse = root_mean_squared_error(y_test, y_test_pred)
-train_r2 = r2_score(y_train, y_train_pred)
-test_r2 = r2_score(y_test, y_test_pred)
+# Treinamento sem %Iron Concentrate
+mlp2 = MLPRegressor(max_iter=500, random_state=42, verbose=True, **best_params)
+mlp2.fit(X2_train, y2_train)
+loss2 = mlp2.loss_curve_
 
-# Exibir resultados
-print(f"\nTrain RMSE: {train_rmse:.4f} | Test RMSE: {test_rmse:.4f}")
-print(f"Train R²: {train_r2:.4f} | Test R²: {test_r2:.4f}")
+y2_train_pred = mlp2.predict(X2_train)
+y2_test_pred = mlp2.predict(X2_test)
 
-fig, ax = plt.subplots(figsize=(10, 8))  
+train_rmse2 = root_mean_squared_error(y2_train, y2_train_pred)
+test_rmse2 = root_mean_squared_error(y2_test, y2_test_pred)
+train_r22 = r2_score(y2_train, y2_train_pred)
+test_r22 = r2_score(y2_test, y2_test_pred)
 
-# Gráfico de Perda (Loss Curve)
-ax.plot(train_losses, label='Train Loss', color='blue')
-ax.set_title('Curva de Perda (Loss) durante o Treinamento')
-ax.set_xlabel('Épocas')
-ax.set_ylabel('Loss')
-ax.legend()
-ax.grid()
-plt.savefig('imagens/loss_curve.png', dpi=200, bbox_inches='tight')
 
-######################### Plotar Série temporal Real x Predita ##################################
- 
+print("\n=== Métricas com %Iron Concentrate ===")
+print(f"Train RMSE: {train_rmse1:.4f} | Test RMSE: {test_rmse1:.4f}")
+print(f"Train R²  : {train_r21:.4f} | Test R²  : {test_r21:.4f}")
+
+print("\n=== Métricas sem %Iron Concentrate ===")
+print(f"Train RMSE: {train_rmse2:.4f} | Test RMSE: {test_rmse2:.4f}")
+print(f"Train R²  : {train_r22:.4f} | Test R²  : {test_r22:.4f}")
+
+
+plt.figure(figsize=(10, 8))
+plt.plot(loss1, label='Loss com %Iron Concentrate', color='blue')
+plt.plot(loss2, label='Loss sem %Iron Concentrate', color='red')
+plt.title('Curva de Perda (Loss) durante o Treinamento')
+plt.xlabel('Épocas')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid()
+plt.savefig('imagens/loss_comparacao.png', dpi=200, bbox_inches='tight')
+
+
+# Função de plot das séries
 def plot_time_series(timesteps, values, start=0, end=None, label=None, color=None, linestyle="-"):
-    """
-    Plota séries temporais com diferentes estilos de linha.
-    """
+    
     sn.lineplot(x=timesteps[start:end], y=values[start:end], label=label, 
                 linewidth=1, alpha=0.7, color=color, linestyle=linestyle)
     
@@ -425,12 +441,21 @@ def plot_time_series(timesteps, values, start=0, end=None, label=None, color=Non
     plt.legend(fontsize=12)
     plt.grid(True)
 
+fig, axes = plt.subplots(2, 1, figsize=(12, 10), dpi=200, sharex=True)
 
-plt.figure(figsize=(12, 6), dpi=200)
+# Com %Iron Concentrate
+plt.sca(axes[0])
+plot_time_series(y1_test.index, y1_test_pred, label="Predito", start=100, color="red", linestyle="--")
+plot_time_series(y1_test.index, y1_test, label="Real", start=100, color="blue")
+plt.title('Predição vs Real (com %Iron Concentrate)')
 
-plot_time_series(y_test.index, y_test_pred, label="MLPRegressor", start=100, color="red", linestyle="--")
-plot_time_series(y_test.index, y_test, label="Valor Real", start=100, color="blue")
+# Sem %Iron Concentrate
+plt.sca(axes[1])
+plot_time_series(y2_test.index, y2_test_pred, label="Predito (MLPRregressor)", start=100, color="red", linestyle="--")
+plot_time_series(y2_test.index, y2_test, label="Real", start=100, color="blue")
+plt.title('Predição vs Real (sem %Iron Concentrate)')
 
-plt.savefig('imagens/serie_pred_real.png', dpi=200, bbox_inches='tight')
+plt.tight_layout()
+plt.savefig('imagens/serie_pred_real_duplo.png', dpi=200, bbox_inches='tight')
 
-# fim do arquivo
+# Fim do arquivo
